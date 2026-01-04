@@ -43,7 +43,6 @@ class CacheBenchmark:
         return response
     
     def get(self, key):
-        """GET operation"""
         self.stats['total_requests'] += 1
         self.stats['gets'] += 1
         
@@ -56,8 +55,7 @@ class CacheBenchmark:
             self.stats['misses'] += 1
             return False
     
-    def add(self, key, value='dummy'):
-        """ADD operation"""
+    def add(self, key, value='dummy'):        
         self.stats['total_requests'] += 1
         self.stats['adds'] += 1
         
@@ -116,7 +114,6 @@ class CacheBenchmark:
         self.print_results(elapsed)
     
     def print_results(self, elapsed_time):
-        """Print benchmark results"""
         print(f"\n{'='*60}")
         print("BENCHMARK RESULTS")
         print(f"{'='*60}")
@@ -139,7 +136,6 @@ class CacheBenchmark:
         print(f"{'='*60}\n")
     
     def close(self):
-        """Close connection"""
         if self.sock:
             self.sock.close()
 
