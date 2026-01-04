@@ -1,0 +1,109 @@
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -pthread
+LDFLAGS = -pthread
+
+# Targets
+TARGET_BASIC = cache_server
+TARGET_ENHANCED = cache_server_enhanced
+
+# Source files
+SOURCES_BASIC = main.cpp cache_server.cpp
+SOURCES_ENHANCED = main_enhanced.cpp cache_server_enhanced.cpp
+
+HEADERS_BASIC = cache_server.h
+HEADERS_ENHANCED = cache_server_enhanced.h
+
+OBJECTS_BASIC = $(SOURCES_BASIC:.cpp=.o)
+OBJECTS_ENHANCED = $(SOURCES_ENHANCED:.cpp=.o)
+
+.PHONY: all basic enhanced clean run benchmark help
+
+# Default target
+all: enhanced
+
+# Basic server (original)
+basic: $(TARGET_BASIC)
+
+# Enhanced server (with multi-threading and multiple policies)
+enhanced: $(TARGET_ENHANCED)
+
+$(TARGET_BASIC): $(OBJECTS_BASIC)
+	$(CXX) $(CXXFLAGS) -o $(TARGET_BASIC) $(OBJECTS_BASIC) $(LDFLAGS)
+
+$(TARGET_ENHANCED): main_enhanced.o cache_server_enhanced.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET_ENHANCED) main_enhanced.o cache_server_enhanced.o $(LDFLAGS)
+
+main.o: main.cpp $(HEADERS_BASIC)
+	$(CXX) $(CXXFLAGS) -c main.cpp -o main.o
+
+cache_server.o: cache_server.cpp $(HEADERS_BASIC)
+	$(CXX) $(CXXFLAGS) -c cache_server.cpp -o cache_server.o
+
+main_enhanced.o: main_enhanced.cpp $(HEADERS_ENHANCED)
+	$(CXX) $(CXXFLAGS) -c main_enhanced.cpp -o main_enhanced.o
+
+cache_server_enhanced.o: cache_server_enhanced.cpp $(HEADERS_ENHANCED)
+	$(CXX) $(CXXFLAGS) -c cache_server_enhanced.cpp -o cache_server_enhanced.o
+
+clean:
+	rm -f $(TARGET_BASIC) $(TARGET_ENHANCED)
+	rm -f *.o
+	rm -f *.log *.pid
+	rm -f benchmark_results.txt
+
+# Generate trace file
+trace:
+	@echo "Generating synthetic trace file..."
+	python3 generate_trace.py 100000 10000 cache_trace.txt
+
+# Run basic server
+run: basic
+	./$(TARGET_BASIC)
+
+# Run enhanced server with LRU
+run-lru: enhanced
+	./$(TARGET_ENHANCED) lru 8080
+
+# Run enhanced server with FIFO
+run-fifo: enhanced
+	./$(TARGET_ENHANCED) fifo 8081
+
+# Run enhanced server with SIEVE
+run-sieve: enhanced
+	./$(TARGET_ENHANCED) sieve 8082
+
+# Run enhanced server with CLOCK
+run-clock: enhanced
+	./$(TARGET_ENHANCED) clock 8083
+
+# Run comprehensive benchmark
+benchmark: enhanced trace
+	@chmod +x run_benchmark.sh
+	@./run_benchmark.sh
+
+# Quick test with one policy
+test: enhanced trace
+	@echo "Starting LRU server..."
+	@./$(TARGET_ENHANCED) lru 8080 > server_test.log 2>&1 & echo $$! > server.pid
+	@sleep 2
+	@echo "Running benchmark..."
+	@python3 benchmark_client.py cache_trace.txt localhost 8080 50000
+	@echo "Stopping server..."
+	@kill `cat server.pid` 2>/dev/null || true
+	@rm -f server.pid
+
+help:
+	@echo "Available targets:"
+	@echo "  all         - Build enhanced server (default)"
+	@echo "  basic       - Build basic server"
+	@echo "  enhanced    - Build enhanced server with multi-threading"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  trace       - Generate synthetic trace file"
+	@echo "  run         - Run basic server"
+	@echo "  run-lru     - Run enhanced server with LRU policy"
+	@echo "  run-fifo    - Run enhanced server with FIFO policy"
+	@echo "  run-sieve   - Run enhanced server with SIEVE policy"
+	@echo "  run-clock   - Run enhanced server with CLOCK policy"
+	@echo "  benchmark   - Run comprehensive benchmark on all policies"
+	@echo "  test        - Quick test with LRU policy"
+	@echo "  help        - Show this help message"
